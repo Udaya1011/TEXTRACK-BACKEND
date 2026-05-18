@@ -87,7 +87,17 @@ router.post('/', protect, adminOnly, upload.single('image'), async (req, res) =>
       } catch(e) {}
     }
 
-    const image = req.file ? `/uploads/products/${req.file.filename}` : '';
+    let image = '';
+    if (req.file) {
+      try {
+        const base64Data = fs.readFileSync(req.file.path, { encoding: 'base64' });
+        image = `data:${req.file.mimetype};base64,${base64Data}`;
+        fs.unlinkSync(req.file.path); // Delete local file
+      } catch (err) {
+        console.error('Failed to convert image to base64', err);
+      }
+    }
+
     const product = await Product.create({ 
       name, styleName, pricePerPiece, category, 
       lowStockThreshold: lowStockThreshold || 50, 
@@ -105,7 +115,15 @@ router.post('/', protect, adminOnly, upload.single('image'), async (req, res) =>
 router.put('/:id', protect, adminOnly, upload.single('image'), async (req, res) => {
   try {
     const updates = { ...req.body };
-    if (req.file) updates.image = `/uploads/products/${req.file.filename}`;
+    if (req.file) {
+      try {
+        const base64Data = fs.readFileSync(req.file.path, { encoding: 'base64' });
+        updates.image = `data:${req.file.mimetype};base64,${base64Data}`;
+        fs.unlinkSync(req.file.path); // Delete local file
+      } catch (err) {
+        console.error('Failed to convert image to base64', err);
+      }
+    }
     
     if (updates.variants) {
       try {
